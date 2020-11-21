@@ -153,7 +153,7 @@ int ParseTCPHeader(char *buffer, struct tcp_info *connection_info){
 // this function implements Sending Rule #3 from PEX2 CS467 instructions
 int WaitForACK(int sockfd, char * packet_sent, int packet_length, struct sockaddr_in * addr, struct tcp_info* connection_info, int num_attempts){
     
-    /* this implements Sending Rule #3.a from PEX2 CS467 instructions
+    // this implements Sending Rule #3.a from PEX2 CS467 instructions
     char * buffer = malloc(sizeof(char)*MAXLINE);
     struct timeval timeout;
     timeout.tv_sec = 1; //sets timeout in seconds
@@ -162,25 +162,37 @@ int WaitForACK(int sockfd, char * packet_sent, int packet_length, struct sockadd
         perror("setsockopt failed");
         return -1;
     }
-    */
+    
 
     //implement Sending Rule 3.b. and 3.c from PEX2 CS467 instructions
 
     return 0;
 }
 
-int TCPSend(int sockfd, char* appdata, int appdata_length, struct sockaddr_in * addr, struct tcp_info *connection_info, int flags){
+int TCPSend(int sockfd, char* appdata, int appdata_length, struct sockaddr_in * addr, struct tcp_info *connection_info){
     //new buffer is required to add TCP header
     char* buffer = malloc(sizeof(char)*MAXLINE);
-    // int flags = 0; //actually, set this to some integer representing which flags you want to set for this packet
+    int flags = 2; // actually, set this to some integer representing which flags you want to set for this packet | changed to 2 for... testing reasons
     //build a buffer containing the TCP header
     int header_length = BuildPacketHeader(buffer, connection_info, flags);
 
     //send packet with sendto()
-
+    int bSent;
     //if sendto() was successful, then update data_sent with how many bytes were just sent
-    
+
+    int numAttempts = 0;
+    do {
+        bSent = sendto(sockfd, (const char *)appdata, strlen(appdata), 0, (const struct sockaddr *) &addr, sizeof(addr));
+        numAttempts += 1;
+    } while (bSent == -1);
+
+
+    if ( bSent!= -1) { 
+        connection_info->data_sent = bSent;
+    }
+
     //immediately get ACK by calling WaitForAck function (see above) according to Sending Rule #3 from PEX2 CS467 instructions
+    WaitForACK(sockfd, buffer, bSent, addr, connection_info, numAttempts);
 
     return 0;
 }
