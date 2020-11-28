@@ -19,24 +19,12 @@
 #define ACK 16
 #define MAXLINE 1024
 
+int ParseTCPHeader(char *buffer, struct tcp_info *connection_info);
 
-struct tcp_info{
-    int my_seq; //INITIAL sequence number of my connection.  Added to 'data_sent' returns the next sequence number i should use.
-    int remote_seq; //INITIAL sequence number of remote side.  Added to 'data_received' returns next expected sequence number.
-    int data_sent;  //used to determine SEQ #
-    int data_received; //used to determine what MY ack should be
-    int remote_data_acknowledged; // what the other side has received based on ACK #
-};
-
-
-int ParseTCPHeader(char *buffer, struct tcp_info *connection_info); //prototype for ParseTCP
-
-int TCPSend(int sockfd, char* appdata, int appdata_length, struct sockaddr_in * addr, struct tcp_info *connection_info);
-
-int BuildPacketHeader(char *buffer, struct tcp_info *connection_info, int flags, char* appdata){
+int BuildPacketHeader(char *buffer, struct tcp_info *connection_info, int flags){
     // Put FLAGS, SEQ, ACK, and APPDATA strings into a buffer
 
-    sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n%s",flags, connection_info->my_seq, connection_info->remote_seq, &appdata); // change LIST_REQUEST to specific request
+    sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n",flags, connection_info->my_seq, connection_info->remote_seq); // change LIST_REQUEST to specific request
     // Update the connection_info struct's data_sent and data_received fields
     return strlen(buffer);
 }
@@ -109,6 +97,17 @@ int ParseTCPHeader(char *buffer, struct tcp_info *connection_info){
 
     //parse splitstring looking for FLAGS. Look for SYN bit and ACK bit, save to SYNbit and ACKbit accordingly
     if(strcmp(splitstring, "FLAGS")==0){
+        splitstring = strtok(NULL, "\n");
+        if(atoi(splitstring) == 2){
+            SYNbit = 1;
+        }
+        if(atoi(splitstring) == 16){
+            ACKbit = 1;
+        }
+        if(atoi(splitstring) == 18){
+            SYNbit = 1;
+            ACKbit = 1;
+        }
     }
     else{ //print appropriate error message, return -1
         return -1; //invalid packet
@@ -117,6 +116,8 @@ int ParseTCPHeader(char *buffer, struct tcp_info *connection_info){
     //parse splitstring looking for SEQ. Set SEQnum accordingly
     splitstring = strtok(NULL, "\n");
     if(strcmp(splitstring, "SEQ")==0){
+        splitstring = strtok(NULL, "\n");
+        SEQnum = atoi(splitstring);
     }
     else{ //print appropriate error message, return -1
         return -1; //invalid packet
@@ -125,6 +126,8 @@ int ParseTCPHeader(char *buffer, struct tcp_info *connection_info){
     //parse splitstring looking for ACK. Set ACKnum accordingly
     splitstring = strtok(NULL, "\n");
     if(strcmp(splitstring, "ACK")==0){
+        splitstring = strtok(NULL, "\n");
+        ACKnum = atoi(splitstring);
     }
     else{ //print appropriate error message, return -1
         return -1; //invalid packet
@@ -139,7 +142,7 @@ int ParseTCPHeader(char *buffer, struct tcp_info *connection_info){
     //All headers were found, update packet info based on values
     if(SYNbit){
         //update connection_info remote_seq and data_received fields
-        connection_info->remote_seq = SYNbit;
+        connection_info->remote_seq = SEQnum;
         connection_info->data_received = 0; //FIXME ??????????????????????????????????????????????????????????????????????????????????????????????????????????
     }
     //else if {the sequence number you received does not match what you were expecting}, print error message and return -2
@@ -177,7 +180,7 @@ int TCPSend(int sockfd, char* appdata, int appdata_length, struct sockaddr_in * 
     char* buffer = malloc(sizeof(char)*MAXLINE);
     int flags = 2; // actually, set this to some integer representing which flags you want to set for this packet | changed to 2 for... testing reasons
     //build a buffer containing the TCP header
-    int header_length = BuildPacketHeader(buffer, connection_info, flags, appdata);
+    int header_length = BuildPacketHeader(buffer, connection_info, flags);
 
     //send packet with sendto()
     int bSent;
@@ -202,7 +205,7 @@ int TCPSend(int sockfd, char* appdata, int appdata_length, struct sockaddr_in * 
 
 struct tcp_info* TCPConnect(int sockfd,  struct sockaddr_in * servaddr){
     //instantiate new connection_info struct
-    struct tcp_info * connection_info = malloc(sizeof(struct tcp_info));
+    struct tcp_info * connection_info;
 
     //initialize my_seq, remote_seq, data_sent, data_received, remote_data_acknowledged
     connection_info->my_seq = rand() % (10000 + 1 - 1) + 1; // random intial sequence number
@@ -214,19 +217,18 @@ struct tcp_info* TCPConnect(int sockfd,  struct sockaddr_in * servaddr){
     //do the 3-way handshake using TCPSend, sendto, TCPReceivePacket, recvfrom, or any other combo of sending/receving
 
     char buffer[MAXLINE];
-    int len = sizeof(servaddr);
-    char* appdata;
+    int len = sizeof(*servaddr);
 
-    int bufSize = BuildPacketHeader(&buffer, connection_info, 2, appdata);
-    sendto(sockfd, buffer, bufSize, 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+    int bufSize = BuildPacketHeader(buffer, connection_info, 2); // SYN flag is 2
+    sendto(sockfd, buffer, bufSize, 0, (const struct sockaddr *) servaddr, len);
 
-    recvfrom(sockfd, buffer, MAXLINE, 0, (struct sockaddr *) &servaddr, &len);
-    ParseTCPHeader(&buffer, connection_info);
+    recvfrom(sockfd, buffer, MAXLINE, 0, (struct sockaddr *) servaddr, &len);
+    ParseTCPHeader(buffer, connection_info);
     
     connection_info->my_seq += 1;
     connection_info->remote_seq += 1;
-    bufSize = BuildPacketHeader(&buffer, connection_info, 2, appdata);
-    sendto(sockfd, buffer, bufSize, 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+    bufSize = BuildPacketHeader(buffer, connection_info, 16); // ACk flag is 16
+    sendto(sockfd, buffer, bufSize, 0, (const struct sockaddr *) servaddr, len);
 
     printf("Connected!\n");
     return connection_info;

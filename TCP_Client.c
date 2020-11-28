@@ -64,6 +64,8 @@ int main() {
         totalFrames = 1;
         totalBytes = 0;
 
+        TCPConnect(sockfd, &servaddr); 
+
         printf("Enter one of the following commands:\n\"1\" = List Songs\n\"2\" = Stream a Song\n\"3\" = exit\n"); // prompt
         fgets(kidsChoice,10,stdin);
         strtok(kidsChoice, "\n");
@@ -84,8 +86,7 @@ int main() {
 
         if (strcmp(kidsChoice, "1") == 0) { // list request to be replaced
             printf("Requesting a list of songs\n");
-            TCPConnect(sockfd, &servaddr);
-            //sendto(sockfd, (const char *)listRequest, strlen(listRequest), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+            sendto(sockfd, (const char *)listRequest, strlen(listRequest), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
 
             if(( n = recvfrom(sockfd, (char *)buffer, MAXLINE, 0, (struct sockaddr *) &servaddr, &len)) < 0) {  // TODO: replace this
                 perror("ERROR receiving response from server");

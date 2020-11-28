@@ -1,27 +1,53 @@
+// {
+//     "tasks": [
+//         {
+//             "type": "cppbuild",
+//             "label": "C/C++: gcc.exe build active file",
+//             "command": "C:\\cygwin64\\bin\\gcc.exe",
+//             "args": [
+//                 "-g",
+//                 "${file}",
+//                 "-o",
+//                 "${fileDirname}\\${fileBasenameNoExtension}.exe"
+//             ],
+//             "options": {
+//                 "cwd": "C:\\cygwin64\\bin"
+//             },
+//             "problemMatcher": [
+//                 "$gcc"
+//             ],
+//             "group": {
+//                 "kind": "build",
+//                 "isDefault": true
+//             },
+//             "detail": "Generated task by Debugger"
+//         }
+//     ],
+//     "version": "2.0.0"
+// }
+
 {
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
     "tasks": [
         {
-            "type": "cppbuild",
-            "label": "C/C++: gcc.exe build active file",
-            "command": "C:\\cygwin64\\bin\\gcc.exe",
+            "label": "build CS467 project",
+            "type": "shell",
+            "command": "gcc",  //CHANGE THIS TO gcc
             "args": [
                 "-g",
-                "${file}",
+                "*.c",  //BUILDS ALL C FILES IN THIS FOLDER
                 "-o",
-                "${fileDirname}\\${fileBasenameNoExtension}.exe"
+                "${fileBasenameNoExtension}"  //NAMES THE EXECUTABLE THE SAME AS THE C SOURCE FILE
             ],
             "options": {
-                "cwd": "C:\\cygwin64\\bin"
+                "cwd": "${fileDirname}"  //CURRENT WORKING DIRECTORY OF THE EXECUTED PROGRAM
             },
-            "problemMatcher": [
-                "$gcc"
-            ],
             "group": {
                 "kind": "build",
                 "isDefault": true
-            },
-            "detail": "Generated task by Debugger"
+            }
         }
-    ],
-    "version": "2.0.0"
+    ]
 }
