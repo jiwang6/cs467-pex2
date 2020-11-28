@@ -11,7 +11,7 @@
 // Must be provided to TCPSend/Receive so that subsequent packets have
 //   the correct header information, and errors can be handled appropriately.
 struct tcp_info{
-    int my_seq;         //stores my INITIAL SEQ number established during TCPConect.  This never changes during a connection
+    int my_seq;         //stores my INITIAL SEQ number established during TCPComnect.  This never changes during a connection
     int remote_seq;     //stores server's INITIAL SEQ number established during TCP Connect.  This never changes during a connection
     int data_sent;      //used to determine what my SEQ # and server's ACK # should be
     int data_received;  //used to track what my ACK# and server's SEQ should be
