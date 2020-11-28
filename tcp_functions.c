@@ -10,8 +10,9 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <errno.h>
-#include <time.h>
+#include <sys/time.h>
 #include <sys/ioctl.h>
+#include "tcp_functions.h"
 
 #define FIN 1
 #define SYN 2
@@ -32,10 +33,10 @@ int ParseTCPHeader(char *buffer, struct tcp_info *connection_info); //prototype 
 
 int TCPSend(int sockfd, char* appdata, int appdata_length, struct sockaddr_in * addr, struct tcp_info *connection_info);
 
-int BuildPacketHeader(char *buffer, struct tcp_info *connection_info, int flags){
+int BuildPacketHeader(char *buffer, struct tcp_info *connection_info, int flags, char* appdata){
     // Put FLAGS, SEQ, ACK, and APPDATA strings into a buffer
 
-    sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n%s",flags, connection_info->my_seq, connection_info->remote_seq, "LIST_REQUEST"); // change LIST_REQUEST to specific request
+    sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n%s",flags, connection_info->my_seq, connection_info->remote_seq, &appdata); // change LIST_REQUEST to specific request
     // Update the connection_info struct's data_sent and data_received fields
     return strlen(buffer);
 }
@@ -138,6 +139,8 @@ int ParseTCPHeader(char *buffer, struct tcp_info *connection_info){
     //All headers were found, update packet info based on values
     if(SYNbit){
         //update connection_info remote_seq and data_received fields
+        connection_info->remote_seq = SYNbit;
+        connection_info->data_received = 0; //FIXME ??????????????????????????????????????????????????????????????????????????????????????????????????????????
     }
     //else if {the sequence number you received does not match what you were expecting}, print error message and return -2
 
@@ -174,7 +177,7 @@ int TCPSend(int sockfd, char* appdata, int appdata_length, struct sockaddr_in * 
     char* buffer = malloc(sizeof(char)*MAXLINE);
     int flags = 2; // actually, set this to some integer representing which flags you want to set for this packet | changed to 2 for... testing reasons
     //build a buffer containing the TCP header
-    int header_length = BuildPacketHeader(buffer, connection_info, flags);
+    int header_length = BuildPacketHeader(buffer, connection_info, flags, appdata);
 
     //send packet with sendto()
     int bSent;
@@ -202,18 +205,28 @@ struct tcp_info* TCPConnect(int sockfd,  struct sockaddr_in * servaddr){
     struct tcp_info * connection_info = malloc(sizeof(struct tcp_info));
 
     //initialize my_seq, remote_seq, data_sent, data_received, remote_data_acknowledged
-
-    // connection_info->my_seq += connection_info->data_sent;
-    // connection_info->remote_seq += connection_info->data_received;
-
-    connection_info->my_seq = rand() % (10000 + 1 - 1) + 1; // don't worry about it
-    
-    connection_info->remote_seq = 0; // server's sequence number
+    connection_info->my_seq = rand() % (10000 + 1 - 1) + 1; // random intial sequence number
+    connection_info->remote_seq = 0; // server's sequence number is currently unknown
+    connection_info->data_sent = 0;
+    connection_info->data_received = 0;
+    connection_info->remote_data_acknowledged = 0;
 
     //do the 3-way handshake using TCPSend, sendto, TCPReceivePacket, recvfrom, or any other combo of sending/receving
 
-    TCPSend();
-    TCPReceivePacket();
+    char buffer[MAXLINE];
+    int len = sizeof(servaddr);
+    char* appdata;
+
+    int bufSize = BuildPacketHeader(&buffer, connection_info, 2, appdata);
+    sendto(sockfd, buffer, bufSize, 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+
+    recvfrom(sockfd, buffer, MAXLINE, 0, (struct sockaddr *) &servaddr, &len);
+    ParseTCPHeader(&buffer, connection_info);
+    
+    connection_info->my_seq += 1;
+    connection_info->remote_seq += 1;
+    bufSize = BuildPacketHeader(&buffer, connection_info, 2, appdata);
+    sendto(sockfd, buffer, bufSize, 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
 
     printf("Connected!\n");
     return connection_info;

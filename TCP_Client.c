@@ -84,7 +84,8 @@ int main() {
 
         if (strcmp(kidsChoice, "1") == 0) { // list request to be replaced
             printf("Requesting a list of songs\n");
-            sendto(sockfd, (const char *)listRequest, strlen(listRequest), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+            TCPConnect(sockfd, &servaddr);
+            //sendto(sockfd, (const char *)listRequest, strlen(listRequest), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
 
             if(( n = recvfrom(sockfd, (char *)buffer, MAXLINE, 0, (struct sockaddr *) &servaddr, &len)) < 0) {  // TODO: replace this
                 perror("ERROR receiving response from server");
