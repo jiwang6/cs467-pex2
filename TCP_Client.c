@@ -90,14 +90,15 @@ int main() {
             TCPSend(sockfd, listRequest, strlen(listRequest), &servaddr, connection_info);
             // sendto(sockfd, (const char *)listRequest, strlen(listRequest), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
 
-            if(( n = recvfrom(sockfd, (char *)buffer, MAXLINE, 0, (struct sockaddr *) &servaddr, &len)) < 0) {  // TODO: replace this
-                perror("ERROR receiving response from server");
-                printf("Errno: %d. ",errno);
-            } else {
-                buffer[n] = '\0'; //terminate message
-                listP = buffer + 11; 
-                printf("Songs Available:\n%s\n", listP);
-            }
+            TCPReceive(sockfd, (char *)buffer, MAXLINE, &servaddr, connection_info);
+            // if(( n = recvfrom(sockfd, (char *)buffer, MAXLINE, 0, (struct sockaddr *) &servaddr, &len)) < 0) {  // TODO: replace this
+            //     perror("ERROR receiving response from server");
+            //     printf("Errno: %d. ",errno);
+            // } else {
+            //     buffer[n] = '\0'; //terminate message
+            //     listP = buffer + 11; 
+            //     printf("Songs Available:\n%s\n", listP);
+            // }
         }
 
         if (strcmp(kidsChoice, "2") == 0) { // song request to be replaced
