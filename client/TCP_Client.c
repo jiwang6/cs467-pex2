@@ -57,6 +57,13 @@ int main() {
                 exit(EXIT_FAILURE);
             }
 
+    /** 
+    * MAIN DRIVER LOOP - ASKS USER FOR INPUT
+    * 
+    * 
+    * 
+    */
+
     for (;;) {
         strcpy(kidsChoice, "\0");
         strcpy(buffer, "\0");
@@ -75,27 +82,36 @@ int main() {
             fgets(kidsChoice,10,stdin);
             strtok(kidsChoice, "\n");
         }
-
-        if (strcmp(kidsChoice, "3") == 0) // exit program
-            break;
-
         // Sending message to server
 
-
-        if (strcmp(kidsChoice, "1") == 0) { // list request to be replaced
+        /**
+         * LIST REQUEST
+         * 
+         * 
+         * 
+         */
+        if (strcmp(kidsChoice, "1") == 0) {
             printf("Requesting a list of songs\n");
-            sendto(sockfd, (const char *)listRequest, strlen(listRequest), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
+            struct tcp_info* tcpInfo = TCPConnect(sockfd, &servaddr);
+            TCPSend(sockfd,listRequest, strlen(listRequest), &servaddr, tcpInfo);
+            //sendto(sockfd, (const char *)listRequest, strlen(listRequest), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
 
             if(( n = recvfrom(sockfd, (char *)buffer, MAXLINE, 0, (struct sockaddr *) &servaddr, &len)) < 0) {  // TODO: replace this
                 perror("ERROR receiving response from server");
                 printf("Errno: %d. ",errno);
             } else {
                 buffer[n] = '\0'; //terminate message
-                listP = buffer + 11; 
+                listP = buffer + 11; // go to messages
                 printf("Songs Available:\n%s\n", listP);
             }
         }
 
+        /**
+         * SONG REQUEST
+         * 
+         * 
+         * 
+         */
         if (strcmp(kidsChoice, "2") == 0) { // song request to be replaced
             printf("Please enter a song name: ");
             
@@ -145,6 +161,10 @@ int main() {
                 fclose(fp);
             }
         } // end of stream funct
+
+        
+        if (strcmp(kidsChoice, "3") == 0) // exit program
+            break;
 
 
     }

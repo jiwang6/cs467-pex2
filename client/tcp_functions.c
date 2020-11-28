@@ -10,8 +10,9 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <errno.h>
-#include <time.h>
+//#include <time.h> // don't work
 #include <sys/ioctl.h>
+#include <sys/time.h>
 
 #define FIN 1
 #define SYN 2
@@ -57,7 +58,7 @@ int TCPReceivePacket(int sockfd, char *appdata, int appdata_length, struct socka
     int appdata_received=0;
     
     //check header_length to determine if there was an error; if so, ignore packet according to Receiving Rule #2 from PEX2 CS467 instructions
-    if(header_length == -1){
+    if(header_length == -1) {
         //print error message
         return -2;
     }
@@ -88,6 +89,18 @@ int TCPReceivePacket(int sockfd, char *appdata, int appdata_length, struct socka
 int TCPReceive(int sockfd, char *buffer, int appdata_length, struct sockaddr_in *addr,
                struct tcp_info *connection_info){
     //initialize # of attempts and appdata_received
+    int numAttempts = 0;
+    connection_info->data_received = 0;
+    
+    while (numAttempts < 15) { // apparently linux 2.2 uses 15 and so do we
+        connection_info->data_received = TCPReceivePacket(sockfd, buffer, appdata_length, addr, connection_info);
+        if (connection_info->data_received == -2) {
+            numAttempts++;
+        }else{
+            return connection_info->data_received;
+        }
+            
+    }
     //loop to call TCPReceivePacket()
     //  loop until you've reached a certain number of attempts (how many attempts are you supposed to try?)
     //  appdata_received saves the receive buffer returned from TCPReceivePacket()
@@ -155,14 +168,32 @@ int WaitForACK(int sockfd, char * packet_sent, int packet_length, struct sockadd
     
     // this implements Sending Rule #3.a from PEX2 CS467 instructions
     char * buffer = malloc(sizeof(char)*MAXLINE);
+    int addrSize = sizeof(addr);
+
     struct timeval timeout;
     timeout.tv_sec = 1; //sets timeout in seconds
     timeout.tv_usec = 0; //0 milliseconds
-    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof                                                                                                                                                                                                                                                                                                                               (timeout)) < 0){
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *) &timeout, sizeof(timeout)) < 0) {
         perror("setsockopt failed");
         return -1;
     }
     
+
+    if(connection_info->data_received = recvfrom(sockfd, (char *)buffer, MAXLINE, 0, (struct sockaddr *) addr, &addrSize) < 0) {
+        perror("ERROR receiving response from server");
+        printf("Errno: %d. ",errno);
+    } else if( num_attempts > 3 ) {
+        perror("max attempts reached");
+    } else if (strcmp(buffer, "ACK") != 0) { // if not ACK
+        WaitForACK(sockfd, packet_sent, packet_length, addr, connection_info, num_attempts+1);
+    } else if (connection_info->remote_data_acknowledged != connection_info->my_seq + 1) { // if not correct ACK number
+        WaitForACK(sockfd, packet_sent, packet_length, addr, connection_info, num_attempts+1);
+    }
+    
+    
+    // ACK not received or wrong ACK number --> resend and wait for another ACK
+
+
 
     //implement Sending Rule 3.b. and 3.c from PEX2 CS467 instructions
 
@@ -172,7 +203,7 @@ int WaitForACK(int sockfd, char * packet_sent, int packet_length, struct sockadd
 int TCPSend(int sockfd, char* appdata, int appdata_length, struct sockaddr_in * addr, struct tcp_info *connection_info){
     //new buffer is required to add TCP header
     char* buffer = malloc(sizeof(char)*MAXLINE);
-    int flags = 2; // actually, set this to some integer representing which flags you want to set for this packet | changed to 2 for... testing reasons
+    int flags = 2; // actually, set this to some integer representing which flags you want to set for this packet | WHAT IS THIS???
     //build a buffer containing the TCP header
     int header_length = BuildPacketHeader(buffer, connection_info, flags);
 
@@ -186,12 +217,11 @@ int TCPSend(int sockfd, char* appdata, int appdata_length, struct sockaddr_in * 
         numAttempts += 1;
     } while (bSent == -1);
 
-
     if ( bSent!= -1) { 
         connection_info->data_sent = bSent;
     }
 
-    //immediately get ACK by calling WaitForAck function (see above) according to Sending Rule #3 from PEX2 CS467 instructions
+    // immediately get ACK by calling WaitForAck function (see above) according to Sending Rule #3 from PEX2 CS467 instructions
     WaitForACK(sockfd, buffer, bSent, addr, connection_info, numAttempts);
 
     return 0;
@@ -199,21 +229,24 @@ int TCPSend(int sockfd, char* appdata, int appdata_length, struct sockaddr_in * 
 
 struct tcp_info* TCPConnect(int sockfd,  struct sockaddr_in * servaddr){
     //instantiate new connection_info struct
-    struct tcp_info * connection_info = malloc(sizeof(struct tcp_info));
+
 
     //initialize my_seq, remote_seq, data_sent, data_received, remote_data_acknowledged
-
-    // connection_info->my_seq += connection_info->data_sent;
-    // connection_info->remote_seq += connection_info->data_received;
-
+    struct tcp_info * connection_info = malloc(sizeof(struct tcp_info));
     connection_info->my_seq = rand() % (10000 + 1 - 1) + 1; // don't worry about it
     
-    connection_info->remote_seq = 0; // server's sequence number
+    connection_info->remote_seq = 0; // server's sequence numbers
+    
+    char* buffer = malloc(sizeof(char)*MAXLINE);
+
+    // connection_info->my_seq += connection_info->data_sent;
+    // connection_info->remote_seq += connection_info->data_received; // increments sequence number for received packets
 
     //do the 3-way handshake using TCPSend, sendto, TCPReceivePacket, recvfrom, or any other combo of sending/receving
 
-    TCPSend();
-    TCPReceivePacket();
+    TCPSend(sockfd, "SYN", 3, servaddr, connection_info); // syn
+    TCPReceive(sockfd, buffer, sizeof(buffer), servaddr, connection_info); // recv synack
+    TCPSend(sockfd, "ACK", 3, servaddr, connection_info); // ACK
 
     printf("Connected!\n");
     return connection_info;
