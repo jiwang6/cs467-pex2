@@ -95,9 +95,9 @@ int main() {
             //     perror("ERROR receiving response from server");
             //     printf("Errno: %d. ",errno);
             // } else {
-            //     buffer[n] = '\0'; //terminate message
+                buffer[n] = '\0'; //terminate message
             //     listP = buffer + 11; 
-            //     printf("Songs Available:\n%s\n", listP);
+                printf("Songs Available:\n%s\n", buffer);
             // }
         }
 
