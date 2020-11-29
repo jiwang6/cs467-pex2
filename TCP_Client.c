@@ -2,6 +2,10 @@
 // Code obtained and modified from https://www.geeksforgeeks.org/udp-server-client-implementation-c/
 //
 
+// Jim Wang and Zach Rotzal
+// Documentation: Lt Col Merritt helped us to spot errors in sending information to the server
+// and in clearing up confusion on the meaning of data_sent and data_received.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -89,15 +93,16 @@ int main() {
             TCPSend(sockfd, listRequest, strlen(listRequest), &servaddr, connection_info);
             // sendto(sockfd, (const char *)listRequest, strlen(listRequest), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
 
-            TCPReceive(sockfd, (char *) buffer, MAXLINE, &servaddr, connection_info);
+            n = TCPReceive(sockfd, (char *) buffer, MAXLINE, &servaddr, connection_info);
             // if(( n = recvfrom(sockfd, (char *)buffer, MAXLINE, 0, 
             //    (struct sockaddr *) &servaddr, &len)) < 0) {  // TODO: replace this
             //     perror("ERROR receiving response from server");
             //     printf("Errno: %d. ",errno);
             // } else {
-                buffer[n] = '\0'; //terminate message
+                // buffer[n] = '\0'; //terminate message
             //     listP = buffer + 11; 
-                printf("Songs Available:\n%s\n", buffer);
+                char* list = buffer + n + 11;
+                printf("Songs Available:\n%s\n", list);
             // }
         }
 

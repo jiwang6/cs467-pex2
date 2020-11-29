@@ -26,18 +26,18 @@ int BuildPacketHeader(char *buffer, struct tcp_info *connection_info, int flags,
     // Put FLAGS, SEQ, ACK, and APPDATA strings into a buffer
     // Update the connection_info struct's data_sent and data_received fields
     if (strcmp(appdata, "ACK") == 0) {
-        sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n", flags, connection_info->my_seq + connection_info->data_received, connection_info->remote_seq + connection_info->data_sent);
+        sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n", flags, connection_info->my_seq + connection_info->data_sent, connection_info->remote_seq + connection_info->data_received);
     } else if (strcmp(appdata, "SYN") == 0) {
-        sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n", flags, connection_info->my_seq + connection_info->data_received, connection_info->remote_seq + connection_info->data_sent);
+        sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n", flags, connection_info->my_seq + connection_info->data_sent, connection_info->remote_seq + connection_info->data_received);
         connection_info->data_sent += 1;
     } else {
         // connection_info->data_sent += strlen(appdata);
-        sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n%s", flags, connection_info->my_seq + connection_info->data_sent, connection_info->remote_seq + connection_info->data_sent, appdata);
+        sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n%s", flags, connection_info->my_seq + connection_info->data_sent, connection_info->remote_seq + connection_info->data_received, appdata);
         // connection_info->data_sent += strlen(appdata);
     }
 
 
-    printf("%s\n\n",buffer); //FIXME - here for debugging !!!!!!!!!!!!!!!!
+    // printf("%s\n\n",buffer); //FIXME - here for debugging !!!!!!!!!!!!!!!!
 
     return strlen(buffer);
 }
@@ -82,36 +82,41 @@ int TCPReceivePacket(int sockfd, char *appdata, int appdata_length, struct socka
     else {
         //calculate how many data bytes were received (don't include the header)
         //add those number of bytes to data_received
-        appdata_received = n - header_length; //FIXME - maybe?
+        appdata_received = n - header_length;
         connection_info->data_received += appdata_received;
-
-        //if data was received, send an ACK immediately according to Receiving Rule #1 from PEX2 CS467 instructions
-        TCPSend(sockfd, "ACK", 0, addr, connection_info);
     }
 
-    return (appdata_received);
+    if(appdata_received > 0){
+        //if data was received, send an ACK immediately according to Receiving Rule #1 from PEX2 CS467 instructions
+        char *buffer = malloc(sizeof(char) *MAXLINE);
+        int bufSize = BuildPacketHeader(buffer, connection_info, ACK, "ACK");
+        sendto(sockfd, buffer, bufSize, 0, (const struct sockaddr *) addr, sizeof( *addr));
+    }
+
+    // return (appdata_received);
+    return header_length;
 }
 
 // TCPReceive calls TCPReceivePacket to receive one packet and to track how many attempts the client will make to receive one packet
 int TCPReceive(int sockfd, char *buffer, int appdata_length, struct sockaddr_in *addr,
     struct tcp_info *connection_info) {
-    //initialize # of attempts and appdata_received
+    //initialize # of attempts and header_length
     int numAttempts = 1;
-    int appdata_received = 0;
+    int header_length = -1;
 
     //loop to call TCPReceivePacket()
     //  loop until you've reached a certain number of attempts (how many attempts are you supposed to try?)
     //  appdata_received saves the receive buffer returned from TCPReceivePacket()
     //  return appdata_received after successful TCPReceivePacket() execution
-    while (numAttempts < 4 && appdata_received <= 0) { //FIXME - is this the right number of attempts 
-        appdata_received = TCPReceivePacket(sockfd, buffer, appdata_length, addr, connection_info);
+    while (numAttempts < 4 && header_length < 0) { // 3 attempts
+        header_length = TCPReceivePacket(sockfd, buffer, appdata_length, addr, connection_info);
         numAttempts++;
     }
-    if (numAttempts >= 4) {
+    if (numAttempts > 4) {
         return -1;
-    } else {
-        return appdata_received;
     }
+
+    return header_length;
 }
 
 //parse out Flags, Seq#, and Ack#.  Validate they are correct.  Update Connection Info
@@ -175,7 +180,7 @@ int ParseTCPHeader(char *buffer, struct tcp_info *connection_info) {
     //     //update connection_info remote_seq and data_received fields
         connection_info->remote_seq = SEQnum;
     //     connection_info->data_received = 1; //FIXME
-    } else if (SEQnum != (connection_info->remote_seq + connection_info->data_sent)) {
+    } else if (SEQnum != (connection_info->remote_seq + connection_info->data_received)) {
     //     //else if {the sequence number you received does not match what you were expecting}, print error message and return -2
         perror("ERROR improper sequence number received\n");
         return -2;
