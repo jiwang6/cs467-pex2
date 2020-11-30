@@ -131,7 +131,7 @@ int ParseTCPHeader(char *buffer, struct tcp_info *connection_info) {
     int ACKnum;
 
     //parse splitstring looking for FLAGS. Look for SYN bit and ACK bit, save to SYNbit and ACKbit accordingly
-    if (strcmp(splitstring, "FLAGS") == 0) {
+    if (strcmp(splitstring, "FLAGS") == 0) { // wat
         splitstring = strtok(NULL, "\n");
         if (atoi(splitstring) == 2) {
             SYNbit = 1;
@@ -215,24 +215,39 @@ int WaitForACK(int sockfd, char *packet_sent, int packet_length, struct sockaddr
     }
 
     //implement Sending Rule 3.b. and 3.c from PEX2 CS467 instructions
-    if (num_attempts > 3) {
-        perror("ERROR receiving 3 ACKs from server\n");
-        exit(EXIT_FAILURE);
-    }
+    
 
     int n, len = sizeof( *addr);
-
+    /*
     if ((n = recvfrom(sockfd, buffer, MAXLINE, 0, (struct sockaddr *) addr, &len)) < 0) {
         //Resend packet
         sendto(sockfd, packet_sent, packet_length, 0, (const struct sockaddr *) addr, sizeof( *addr));
-        WaitForACK(sockfd, packet_sent, packet_length, addr, connection_info, num_attempts++);
+        num_attempts++;
+        WaitForACK(sockfd, packet_sent, packet_length, addr, connection_info, num_attempts);
+    }
+    
+    do {
+        sendto(sockfd, packet_sent, packet_length, 0, (const struct sockaddr *) addr, sizeof( *addr));
+        n = recvfrom(sockfd, buffer, MAXLINE, 0, (struct sockaddr *) addr, &len);
+        num_attempts++;
+    }
+    */ 
+    while (((n = recvfrom(sockfd, buffer, MAXLINE, 0, (struct sockaddr *) addr, &len)) < 0) && (num_attempts < 4)) {
+        num_attempts++;
+        sendto(sockfd, packet_sent, packet_length, 0, (const struct sockaddr *) addr, sizeof( *addr));
+    }
+
+    if (num_attempts > 3) {
+        perror("ERROR receiving 3 ACKs from server\n");
+        return -1;
     }
 
     int header_length = ParseTCPHeader(buffer, connection_info); //call ParseTCPHeader, and save output in header_length
     //check header_length to determine if wrong ACK number received; if so, resend packet
     if (header_length == -3) {
         sendto(sockfd, packet_sent, packet_length, 0, (const struct sockaddr *) addr, sizeof( *addr));
-        WaitForACK(sockfd, packet_sent, packet_length, addr, connection_info, num_attempts++);
+        num_attempts++;
+        WaitForACK(sockfd, packet_sent, packet_length, addr, connection_info, num_attempts);
     }
 
     return 0;

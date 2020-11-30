@@ -28,7 +28,7 @@ int main() {
     char *listRequest = "LIST_REQUEST"; //message to send to server
     char streamRequest[100] = "START_STREAM\n";
     char songName[50];
-    struct sockaddr_in servaddr; // we don't bind to a socket to send UDP traffic, so we only need to configure server address
+    struct sockaddr_in servaddr;
 
     char kidsChoice[50]; // what the user wants, don't worry about it
     int totalFrames = 1;
