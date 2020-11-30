@@ -68,7 +68,10 @@ int TCPReceivePacket(int sockfd, char *appdata, int appdata_length, struct socka
     //check header_length to determine if wrong SEQ number received; if so, look at Receiving Rule #3 from PEX2 CS467 instructions
     else if (header_length == -2) {
         //immediately re-send ACK packet
-        TCPSend(sockfd, "ACK", 1, addr, connection_info); // stepping over quits
+        //TCPSend(sockfd, "ACK", 1, addr, connection_info); // stepping over quits
+        char *buffer = malloc(sizeof(char) *MAXLINE);
+        int bufSize = BuildPacketHeader(buffer, connection_info, ACK, "ACK");
+        sendto(sockfd, buffer, bufSize, 0, (const struct sockaddr *) addr, sizeof( *addr));
         return -2;
     }
 
