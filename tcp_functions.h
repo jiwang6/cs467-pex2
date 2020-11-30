@@ -2,6 +2,10 @@
 // Author: Capt G. Parks Masters
 // Date: 6 Oct 2019
 //
+// Jim Wang and Zach Rotzal
+// PEX2
+// 30 November 2020
+// Please reference TCP_Client.c for documentation statement
 
 #ifndef TCP_MP3SERVER_TCP_FUNCTIONS_H
 #define TCP_MP3SERVER_TCP_FUNCTIONS_H

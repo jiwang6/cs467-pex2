@@ -1,6 +1,10 @@
 //
 // Created by Parks Masters; TEMPLATE edited by David Merritt.
 //
+// Jim Wang and Zach Rotzal
+// PEX2
+// 30 November 2020
+// Please reference TCP_Client.c for documentation statement
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,21 +27,18 @@
 int ParseTCPHeader(char *buffer, struct tcp_info *connection_info);
 
 int BuildPacketHeader(char *buffer, struct tcp_info *connection_info, int flags, char *appdata) {
+
     // Put FLAGS, SEQ, ACK, and APPDATA strings into a buffer
     // Update the connection_info struct's data_sent and data_received fields
+
     if (strcmp(appdata, "ACK") == 0) {
         sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n", flags, connection_info->my_seq + connection_info->data_sent, connection_info->remote_seq + connection_info->data_received);
     } else if (strcmp(appdata, "SYN") == 0) {
         sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n", flags, connection_info->my_seq + connection_info->data_sent, connection_info->remote_seq + connection_info->data_received);
         connection_info->data_sent += 1;
     } else {
-        // connection_info->data_sent += strlen(appdata);
         sprintf(buffer, "FLAGS\n%d\nSEQ\n%d\nACK\n%d\nAPPDATA\n%s", flags, connection_info->my_seq + connection_info->data_sent, connection_info->remote_seq + connection_info->data_received, appdata);
-        // connection_info->data_sent += strlen(appdata);
     }
-
-
-    // printf("%s\n\n",buffer); //FIXME - here for debugging !!!!!!!!!!!!!!!!
 
     return strlen(buffer);
 }
@@ -68,7 +69,6 @@ int TCPReceivePacket(int sockfd, char *appdata, int appdata_length, struct socka
     //check header_length to determine if wrong SEQ number received; if so, look at Receiving Rule #3 from PEX2 CS467 instructions
     else if (header_length == -2) {
         //immediately re-send ACK packet
-        //TCPSend(sockfd, "ACK", 1, addr, connection_info); // stepping over quits
         char *buffer = malloc(sizeof(char) *MAXLINE);
         int bufSize = BuildPacketHeader(buffer, connection_info, ACK, "ACK");
         sendto(sockfd, buffer, bufSize, 0, (const struct sockaddr *) addr, sizeof( *addr));
@@ -96,7 +96,6 @@ int TCPReceivePacket(int sockfd, char *appdata, int appdata_length, struct socka
         sendto(sockfd, buffer, bufSize, 0, (const struct sockaddr *) addr, sizeof( *addr));
     }
 
-    // return appdata_received;
     return header_length;
 }
 
@@ -107,12 +106,8 @@ int TCPReceive(int sockfd, char *buffer, int appdata_length, struct sockaddr_in 
     int numAttempts = 1;
     int header_length = -1;
 
-    //loop to call TCPReceivePacket()
-    //  loop until you've reached a certain number of attempts (how many attempts are you supposed to try?)
-    //  appdata_received saves the receive buffer returned from TCPReceivePacket()
-    //  return appdata_received after successful TCPReceivePacket() execution
     while (numAttempts < 4 && header_length < 0) { // 3 attempts
-        header_length = TCPReceivePacket(sockfd, buffer, appdata_length, addr, connection_info); // break here
+        header_length = TCPReceivePacket(sockfd, buffer, appdata_length, addr, connection_info);
         numAttempts++;
     }
     
@@ -135,7 +130,7 @@ int ParseTCPHeader(char *buffer, struct tcp_info *connection_info) {
     int ACKnum;
 
     //parse splitstring looking for FLAGS. Look for SYN bit and ACK bit, save to SYNbit and ACKbit accordingly
-    if (strcmp(splitstring, "FLAGS") == 0) { // wat
+    if (strcmp(splitstring, "FLAGS") == 0) { 
         splitstring = strtok(NULL, "\n");
         if (atoi(splitstring) == 2) {
             SYNbit = 1;
@@ -181,17 +176,15 @@ int ParseTCPHeader(char *buffer, struct tcp_info *connection_info) {
 
     //All headers were found, update packet info based on values
     if (SYNbit) {
-    //     //update connection_info remote_seq and data_received fields
         connection_info->remote_seq = SEQnum;
-    //     connection_info->data_received = 1; //FIXME
     } else if (SEQnum != (connection_info->remote_seq + connection_info->data_received)) {
-    //     //else if {the sequence number you received does not match what you were expecting}, print error message and return -2
+        //else if {the sequence number you received does not match what you were expecting}, print error message and return -2
         perror("ERROR improper sequence number received\n");
         return -2;
     }
 
     if (ACKbit) {
-        // //if ACKnum is not what it should be (based on my_seq and data_sent), then print error message and return -3
+        //if ACKnum is not what it should be (based on my_seq and data_sent), then print error message and return -3
         if (ACKnum != (connection_info->my_seq + connection_info->data_sent)) {
             printf("ERROR ACK number does not match expected value\n");
             return -3;
@@ -222,20 +215,7 @@ int WaitForACK(int sockfd, char *packet_sent, int packet_length, struct sockaddr
     
 
     int n, len = sizeof( *addr);
-    /*
-    if ((n = recvfrom(sockfd, buffer, MAXLINE, 0, (struct sockaddr *) addr, &len)) < 0) {
-        //Resend packet
-        sendto(sockfd, packet_sent, packet_length, 0, (const struct sockaddr *) addr, sizeof( *addr));
-        num_attempts++;
-        WaitForACK(sockfd, packet_sent, packet_length, addr, connection_info, num_attempts);
-    }
-    
-    do {
-        sendto(sockfd, packet_sent, packet_length, 0, (const struct sockaddr *) addr, sizeof( *addr));
-        n = recvfrom(sockfd, buffer, MAXLINE, 0, (struct sockaddr *) addr, &len);
-        num_attempts++;
-    }
-    */ 
+   
     while (((n = recvfrom(sockfd, buffer, MAXLINE, 0, (struct sockaddr *) addr, &len)) < 0) && (num_attempts < 4)) {
         num_attempts++;
         sendto(sockfd, packet_sent, packet_length, 0, (const struct sockaddr *) addr, sizeof( *addr));
@@ -246,13 +226,11 @@ int WaitForACK(int sockfd, char *packet_sent, int packet_length, struct sockaddr
         return -1;
     }
 
-    int header_length;
-    //header_length = ParseTCPHeader(buffer, connection_info); //call ParseTCPHeader, and save output in header_length
     //check header_length to determine if wrong ACK number received; if so, resend packet
-    
+    int header_length;
 
-    num_attempts = 0; // cuz reasons
-    while (((header_length = ParseTCPHeader(buffer, connection_info)) == -3) && (num_attempts < 2) ) { // break here
+    num_attempts = 0; // reset
+    while (((header_length = ParseTCPHeader(buffer, connection_info)) == -3) && (num_attempts < 4) ) { 
         sendto(sockfd, packet_sent, packet_length, 0, (const struct sockaddr *) addr, sizeof( *addr));
         recvfrom(sockfd, buffer, MAXLINE, 0, (struct sockaddr *) addr, &len);
         num_attempts++;
@@ -262,14 +240,7 @@ int WaitForACK(int sockfd, char *packet_sent, int packet_length, struct sockaddr
         perror("ERROR receiving 3 ACKs from server\n");
         return -1;
     }
-    
-    /*
-    if (header_length == -3) {
-        sendto(sockfd, packet_sent, packet_length, 0, (const struct sockaddr *) addr, sizeof( *addr));
-        num_attempts++;
-        WaitForACK(sockfd, packet_sent, packet_length, addr, connection_info, num_attempts);
-    }
-    */
+
 
     return 0;
 }
@@ -283,17 +254,16 @@ int TCPSend(int sockfd, char *appdata, int appdata_length, struct sockaddr_in *a
     } else if (strcmp(appdata, "FIN") == 0) {
         flags = FIN;
     }
+
     //build a buffer containing the TCP header
     int bufSize = BuildPacketHeader(buffer, connection_info, flags, appdata);
+
     //send packet with sendto()
-    int bSent;
+    int bSent; //bytes sent
     //if sendto() was successful, then update data_sent with how many bytes were just sent
     if ((bSent = sendto(sockfd, buffer, bufSize, 0, (const struct sockaddr *) addr, sizeof( *addr))) != -1) {
-        connection_info->data_sent += appdata_length;
-        // connection_info->data_sent = connection_info->my_seq + appdata_length; // FIXME - is this bSent or appdata_length or header_length - can't decide  
+        connection_info->data_sent += appdata_length; 
     }
-    
-    // bSent = sendto(sockfd, buffer, bufSize, 0, (const struct sockaddr *) addr, sizeof( *addr));
 
     //immediately get ACK by calling WaitForAck function (see above) according to Sending Rule #3 from PEX2 CS467 instructions
     WaitForACK(sockfd, buffer, bufSize, addr, connection_info, 1);

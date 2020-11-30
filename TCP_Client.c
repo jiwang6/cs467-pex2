@@ -3,8 +3,12 @@
 //
 
 // Jim Wang and Zach Rotzal
+// PEX2
+// 30 November 2020
 // Documentation: Lt Col Merritt helped us to spot errors in sending information to the server
-// and in clearing up confusion on the meaning of data_sent and data_received.
+// and in clearing up confusion on the meaning of data_sent and data_received. He also helped
+// us debug for reasons why the client and/or server crashed. We also googled how to generate
+// a random number via a google chrome plugin (https://www.codegrepper.com/app/profile.php?id=59402).
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -85,26 +89,21 @@ int main() {
         if (strcmp(kidsChoice, "3") == 0) // exit program
             break;
 
+
         /**
          *LIST REQUEST
          */
         if (strcmp(kidsChoice, "1") == 0) { // list request to be replaced
             printf("Requesting a list of songs\n");
             TCPSend(sockfd, listRequest, strlen(listRequest), &servaddr, connection_info);
-            // sendto(sockfd, (const char *)listRequest, strlen(listRequest), 0, (const struct sockaddr *) &servaddr, sizeof(servaddr));
 
             n = TCPReceive(sockfd, (char *) buffer, MAXLINE, &servaddr, connection_info);
-            // if(( n = recvfrom(sockfd, (char *)buffer, MAXLINE, 0, 
-            //    (struct sockaddr *) &servaddr, &len)) < 0) {  // TODO: replace this
-            //     perror("ERROR receiving response from server");
-            //     printf("Errno: %d. ",errno);
-            // } else {
-                // buffer[n] = '\0'; //terminate message
-            //     listP = buffer + 11; 
+           
             char* list = buffer + n + 11;
             printf("Songs Available:\n%s\n", list);
-            // }
+           
         }
+
 
         /**
          *SONG REQUEST
