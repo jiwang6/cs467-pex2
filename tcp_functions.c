@@ -109,9 +109,10 @@ int TCPReceive(int sockfd, char *buffer, int appdata_length, struct sockaddr_in 
     //  appdata_received saves the receive buffer returned from TCPReceivePacket()
     //  return appdata_received after successful TCPReceivePacket() execution
     while (numAttempts < 4 && header_length < 0) { // 3 attempts
-        header_length = TCPReceivePacket(sockfd, buffer, appdata_length, addr, connection_info);
+        header_length = TCPReceivePacket(sockfd, buffer, appdata_length, addr, connection_info); // here too?
         numAttempts++;
     }
+    
     if (numAttempts > 4) {
         return -1;
     }
@@ -242,13 +243,30 @@ int WaitForACK(int sockfd, char *packet_sent, int packet_length, struct sockaddr
         return -1;
     }
 
-    int header_length = ParseTCPHeader(buffer, connection_info); //call ParseTCPHeader, and save output in header_length
+    int header_length;
+    //header_length = ParseTCPHeader(buffer, connection_info); //call ParseTCPHeader, and save output in header_length
     //check header_length to determine if wrong ACK number received; if so, resend packet
+    
+
+    num_attempts = 0; // cuz reasons
+    while (((header_length = ParseTCPHeader(buffer, connection_info)) == -3) && (num_attempts < 2) ) { // break here
+        sendto(sockfd, packet_sent, packet_length, 0, (const struct sockaddr *) addr, sizeof( *addr));
+        recvfrom(sockfd, buffer, MAXLINE, 0, (struct sockaddr *) addr, &len);
+        num_attempts++;
+    }
+
+    if (num_attempts > 3) {
+        perror("ERROR receiving 3 ACKs from server\n");
+        return -1;
+    }
+    
+    /*
     if (header_length == -3) {
         sendto(sockfd, packet_sent, packet_length, 0, (const struct sockaddr *) addr, sizeof( *addr));
         num_attempts++;
         WaitForACK(sockfd, packet_sent, packet_length, addr, connection_info, num_attempts);
     }
+    */
 
     return 0;
 }
