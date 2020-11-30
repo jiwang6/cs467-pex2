@@ -101,8 +101,8 @@ int main() {
             // } else {
                 // buffer[n] = '\0'; //terminate message
             //     listP = buffer + 11; 
-                char* list = buffer + n + 11;
-                printf("Songs Available:\n%s\n", list);
+            char* list = buffer + n + 11;
+            printf("Songs Available:\n%s\n", list);
             // }
         }
 
